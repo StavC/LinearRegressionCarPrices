@@ -16,10 +16,9 @@ def main():
     sns.set()
     raw_data=pd.read_csv('1.04. Real-life example.csv')
     pd.set_option('display.expand_frame_repr', False)
-    print(raw_data.describe(include='all'))
+    #print(raw_data.describe(include='all'))
         ## it will be hard to implement model that has 312 unique models so will drop it
-    data=raw_data.drop(['Model'],axis=1)
-    #print(data.describe(include='all'))
+    data = raw_data.drop(['Brand'], axis=1)    #print(data.describe(include='all'))
     #print(data.isnull().sum())
         #price and Enginev has null so drop the null entrys
     data_no_missing_values=data.dropna(axis=0) #drop all the entrys with missing values
@@ -48,7 +47,7 @@ def main():
     #sns.distplot(data_4['Year'])
     #plt.show()
     data_cleaned=data_4.reset_index(drop=True)
-    print(data_cleaned.describe(include='all'))
+    #print(data_cleaned.describe(include='all'))
 
    # f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 3))  # sharey -> share 'Price' as y
     #ax1.scatter(data_cleaned['Year'], data_cleaned['Price'])
@@ -103,20 +102,19 @@ def main():
 
         #### create Dummy Variables
     data_with_dummys=pd.get_dummies(data_no_multicollinearity,drop_first=True)
+
     #print(data_with_dummys.head())
     # To make the code a bit more parametrized, let's declare a new variable that will contain the preferred order
+    pd.options.display.max_rows = 999
 
-    cols = ['log_price', 'Mileage', 'EngineV', 'Brand_BMW',
-            'Brand_Mercedes-Benz', 'Brand_Mitsubishi', 'Brand_Renault',
-            'Brand_Toyota', 'Brand_Volkswagen', 'Body_hatch', 'Body_other',
-            'Body_sedan', 'Body_vagon', 'Body_van', 'Engine Type_Gas',
-            'Engine Type_Other', 'Engine Type_Petrol', 'Registration_yes']
-    data_preprocessed = data_with_dummys[cols]
+    data_preprocessed = data_with_dummys
+    pd.set_option('display.float_format', lambda x: '%.2f' % x)
 
     ### geting VIF for all features
     # Let's simply drop log_price from data_preprocessed
     variables = data_preprocessed.drop(['log_price'], axis=1)
     vif = pd.DataFrame()
+
     vif["VIF"] = [variance_inflation_factor(variables.values, i) for i in range(variables.shape[1])]
     vif["features"] = variables.columns
     #print(vif)
@@ -170,8 +168,12 @@ def main():
     # that y_hat (predictions) are much higher than y_train (the targets)
     # This is food for thought to improve our model
     # Find the R-squared of the model
-    reg.score(x_train, y_train)
+    print(f"R2: {reg.score(x_train, y_train)}")
+    n = x_train.shape[0]
+    p = x_train.shape[1]
 
+    adjusted_r2 = 1 - (1 - reg.score(x_train, y_train)) * (n - 1) / (n - p - 1)
+    print(f"adjusted r2{adjusted_r2}")
     # Note that this is NOT the adjusted R-squared
     # in other words... find the Adjusted R-squared to have the appropriate measure :)
     # Obtain the bias (intercept) of the regression
@@ -180,9 +182,7 @@ def main():
     reg_summary = pd.DataFrame(inputs.columns.values, columns=['Features'])
     reg_summary['Weights'] = reg.coef_
     print(reg_summary)
-    # Check the different categories in the 'Brand' variable
-    data_cleaned['Brand'].unique()
-    # In this way we can see which 'Brand' is actually the benchmark-AUDI
+
     ### TESTING
     # Once we have trained and fine-tuned our model, we can proceed to testing it
     # Testing is done on a dataset that the algorithm has never seen
@@ -225,12 +225,6 @@ def main():
     # Finally, we sort by difference in % and manually check the model
     df_pf=df_pf.sort_values(by=['Difference%'])
     print(df_pf)
-    print(f"R2: {reg.score(x_train, y_train)}")
-    n = x_train.shape[0]
-    p = x_train.shape[1]
-
-    adjusted_r2 = 1 - (1 - reg.score(x_train, y_train)) * (n - 1) / (n - p - 1)
-    print(f"adjusted r2 {adjusted_r2}")
 
 if __name__ == '__main__':
     main()
