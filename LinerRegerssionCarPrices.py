@@ -4,6 +4,10 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 import seaborn as sns
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.preprocessing import StandardScaler
+
+
 
 
 def main():
@@ -43,10 +47,85 @@ def main():
     #plt.show()
     data_cleaned=data_4.reset_index(drop=True)
     print(data_cleaned.describe(include='all'))
-    
+
+    f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 3))  # sharey -> share 'Price' as y
+    ax1.scatter(data_cleaned['Year'], data_cleaned['Price'])
+    ax1.set_title('Price and Year')
+    ax2.scatter(data_cleaned['EngineV'], data_cleaned['Price'])
+    ax2.set_title('Price and EngineV')
+    ax3.scatter(data_cleaned['Mileage'], data_cleaned['Price'])
+    ax3.set_title('Price and Mileage')
+
+    plt.show()
+        # From the subplots and the PDF of price, we can easily determine that 'Price' is exponentially distributed
+        # A good transformation in that case is a log transformation
+    #sns.distplot(data_cleaned['Price'])
+         # Let's transform 'Price' with a log transformation
+    log_price = np.log(data_cleaned['Price'])
+
+         # Then we add it to our data frame
+    data_cleaned['log_price'] = log_price
+
+    f, (ax1, ax2, ax3) = plt.subplots(1, 3, sharey=True, figsize=(15, 3))
+    ax1.scatter(data_cleaned['Year'], data_cleaned['log_price'])
+    ax1.set_title('Log Price and Year')
+    ax2.scatter(data_cleaned['EngineV'], data_cleaned['log_price'])
+    ax2.set_title('Log Price and EngineV')
+    ax3.scatter(data_cleaned['Mileage'], data_cleaned['log_price'])
+    ax3.set_title('Log Price and Mileage')
+         # The relationships show a clear linear relationship
+         # This is some good linear regression material
+         # Alternatively we could have transformed each of the independent variables
+    plt.show()
+
+    ###### check for multicollinearity
+    # To make this as easy as possible to use, we declare a variable where we put
+    # all features where we want to check for multicollinearity
+    variables = data_cleaned[['Mileage', 'Year', 'EngineV']]
+    vif = pd.DataFrame()
+    # here we make use of the variance_inflation_factor, which will basically output the respective VIFs
+    vif["VIF"] = [variance_inflation_factor(variables.values, i) for i in range(variables.shape[1])]
+    # Finally, I like to include names so it is easier to explore the result
+    vif["Features"] = variables.columns
+    print(vif)
+    # Since Year has the highest VIF, remove it from the model
+    # This will drive the VIF of other variables down!!!
+    # So even if EngineV seems with a high VIF, too, once 'Year' is gone that will no longer be the case
+    data_no_multicollinearity = data_cleaned.drop(['Year'], axis=1)
+    variables = data_no_multicollinearity[['Mileage', 'EngineV']]
+    vif = pd.DataFrame()
+    vif["VIF"] = [variance_inflation_factor(variables.values, i) for i in range(variables.shape[1])]
+    vif["Features"] = variables.columns
+    print(vif)
+    # the VIF is low for Mileage and EngineV
+
+        #### create Dummy Variables
+    data_with_dummys=pd.get_dummies(data_no_multicollinearity,drop_first=True)
+    print(data_with_dummys.head())
+    # To make the code a bit more parametrized, let's declare a new variable that will contain the preferred order
+
+    cols = ['log_price', 'Mileage', 'EngineV', 'Brand_BMW',
+            'Brand_Mercedes-Benz', 'Brand_Mitsubishi', 'Brand_Renault',
+            'Brand_Toyota', 'Brand_Volkswagen', 'Body_hatch', 'Body_other',
+            'Body_sedan', 'Body_vagon', 'Body_van', 'Engine Type_Gas',
+            'Engine Type_Other', 'Engine Type_Petrol', 'Registration_yes']
+    data_preprocessed = data_with_dummys[cols]
+
+    ### geting VIF for all features
+    # Let's simply drop log_price from data_preprocessed
+    variables = data_preprocessed.drop(['log_price'], axis=1)
+    vif = pd.DataFrame()
+    vif["VIF"] = [variance_inflation_factor(variables.values, i) for i in range(variables.shape[1])]
+    vif["features"] = variables.columns
+    print(vif)
 
 
+    ###### Linear Regerssion Model
+    # The target(s) (dependent variable) is 'log price'
+    targets = data_preprocessed['log_price']
 
+    # The inputs are everything BUT the dependent variable, so we can simply drop it
+    inputs = data_preprocessed.drop(['log_price'], axis=1)
 
 
 if __name__ == '__main__':
